@@ -1,4 +1,4 @@
-package net.daboross.airtables;
+package org.ingrahamrobotics.robottables;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -6,20 +6,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import net.daboross.airtables.api.AirTable;
-import net.daboross.airtables.api.AirTablesClient;
-import net.daboross.airtables.api.Callback;
-import net.daboross.airtables.api.TableType;
-import net.daboross.airtables.api.listeners.ClientUpdateListener;
+import org.ingrahamrobotics.robottables.api.AirTable;
+import org.ingrahamrobotics.robottables.api.AirTablesClient;
+import org.ingrahamrobotics.robottables.api.Callback;
+import org.ingrahamrobotics.robottables.api.TableType;
+import org.ingrahamrobotics.robottables.api.listeners.ClientUpdateListener;
 
-public class AirTables implements AirTablesClient {
+public class RobotTables implements AirTablesClient {
 
     private ExecutorService eventService = Executors.newSingleThreadExecutor();
     private Map<String, InternalAirTable> airTableMap = new HashMap<String, InternalAirTable>();
     private List<ClientUpdateListener> listeners = new ArrayList<ClientUpdateListener>();
     private final TableCommunications communications;
 
-    public AirTables(final int[] ports, final int port) {
+    public RobotTables(final int[] ports, final int port) {
         communications = new TableCommunications(ports, port);
     }
 

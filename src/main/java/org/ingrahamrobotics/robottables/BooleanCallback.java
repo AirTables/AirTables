@@ -1,4 +1,4 @@
-package net.daboross.airtables;
+package org.ingrahamrobotics.robottables;
 
 public interface BooleanCallback {
 
