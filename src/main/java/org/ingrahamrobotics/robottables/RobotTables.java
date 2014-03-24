@@ -1,22 +1,22 @@
 package org.ingrahamrobotics.robottables;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.ingrahamrobotics.robottables.api.AirTable;
-import org.ingrahamrobotics.robottables.api.AirTablesClient;
-import org.ingrahamrobotics.robottables.api.Callback;
+import org.ingrahamrobotics.robottables.api.RobotTablesClient;
+import org.ingrahamrobotics.robottables.api.TableCallback;
 import org.ingrahamrobotics.robottables.api.TableType;
 import org.ingrahamrobotics.robottables.api.listeners.ClientUpdateListener;
+import org.ingrahamrobotics.robottables.interfaces.InternalRobotTables;
 
-public class RobotTables implements AirTablesClient {
+public class RobotTables implements RobotTablesClient, InternalRobotTables {
 
-    private ExecutorService eventService = Executors.newSingleThreadExecutor();
-    private Map<String, InternalAirTable> airTableMap = new HashMap<String, InternalAirTable>();
-    private List<ClientUpdateListener> listeners = new ArrayList<ClientUpdateListener>();
+    ExecutorService eventService = Executors.newSingleThreadExecutor();
+    private Hashtable airTableMap = new Hashtable(); // Map from String to InternalAirTable
+    private List listeners = new ArrayList(); // List of ClientUpdateListener
     private final TableCommunications communications;
 
     public RobotTables(final int[] ports, final int port) {
@@ -24,7 +24,7 @@ public class RobotTables implements AirTablesClient {
     }
 
     InternalAirTable externalPublishedTable(final String tableName) {
-        InternalAirTable airTable = airTableMap.get(tableName);
+        InternalAirTable airTable = (InternalAirTable) airTableMap.get(tableName);
         if (airTable != null) {
             airTable.clear(); // TODO: Should we clear all values when a table is re-published?
             if (airTable.getType() != TableType.REMOTE) {
@@ -33,15 +33,29 @@ public class RobotTables implements AirTablesClient {
                 fireTableTypeChangeEvent(airTable, oldType, TableType.REMOTE);
             }
         } else {
-            airTable = new InternalAirTable(TableType.REMOTE);
+            airTable = new InternalAirTable(this, TableType.REMOTE);
             airTableMap.put(tableName, airTable);
             fireNewTableEvent(airTable);
         }
         return airTable;
     }
 
+    public void tableUpdated(InternalAirTable table) {
+    }
+
+    public void tableKeyRemoved(InternalAirTable table, String key) {
+    }
+
+    public void tableCleared(InternalAirTable table) {
+    }
+
+    public void executeEvent(final Runnable runnable) {
+
+    }
+
     void fireTableTypeChangeEvent(final AirTable table, final TableType oldType, final TableType newType) {
-        for (final ClientUpdateListener listener : listeners) {
+        for (int i = 0; i < listeners.size(); i++) {
+            final ClientUpdateListener listener = (ClientUpdateListener) listeners.get(i);
             eventService.execute(new Runnable() {
                 public void run() {
                     listener.onTableChangeType(table, oldType, newType);
@@ -51,7 +65,8 @@ public class RobotTables implements AirTablesClient {
     }
 
     void fireNewTableEvent(final AirTable table) {
-        for (final ClientUpdateListener listener : listeners) {
+        for (int i = 0; i < listeners.size(); i++) {
+            final ClientUpdateListener listener = (ClientUpdateListener) listeners.get(i);
             eventService.execute(new Runnable() {
                 public void run() {
                     listener.onNewTable(table);
@@ -60,7 +75,7 @@ public class RobotTables implements AirTablesClient {
         }
     }
 
-    <T> void fireCallback(final Callback<T> callback, final T param) {
+    void fireCallback(final TableCallback callback, final AirTable param) {
         eventService.execute(new Runnable() {
             public void run() {
                 callback.run(param);
@@ -69,7 +84,7 @@ public class RobotTables implements AirTablesClient {
     }
 
     public AirTable getTable(final String tableName) {
-        return airTableMap.get(tableName);
+        return (InternalAirTable) airTableMap.get(tableName);
     }
 
     public boolean doesExist(final String tableName) {
@@ -80,8 +95,8 @@ public class RobotTables implements AirTablesClient {
         return null;
     }
 
-    public void publishTable(final String tableName, final Callback<AirTable> callback) {
-        AirTable alreadyExistingTable = airTableMap.get(tableName);
+    public void publishTable(final String tableName, final TableCallback callback) {
+        AirTable alreadyExistingTable = (InternalAirTable) airTableMap.get(tableName);
         if (alreadyExistingTable != null) {
             fireCallback(callback, alreadyExistingTable);
         }
@@ -94,9 +109,9 @@ public class RobotTables implements AirTablesClient {
                     ex.printStackTrace();
                     return;
                 }
-                AirTable table = airTableMap.get(tableName);
+                AirTable table = (InternalAirTable) airTableMap.get(tableName);
                 if (table == null) {
-                    table = new InternalAirTable(TableType.LOCAL);
+                    table = new InternalAirTable(RobotTables.this, TableType.LOCAL);
                 }
                 fireCallback(callback, table);
             }
@@ -111,8 +126,5 @@ public class RobotTables implements AirTablesClient {
 
     public void removeClientListener(final ClientUpdateListener listener) {
         listeners.remove(listener);
-    }
-
-    void onRemoteTableExists(String tableName) {
     }
 }
